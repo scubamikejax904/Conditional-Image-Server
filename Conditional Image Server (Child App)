@@ -1,0 +1,133 @@
+/**
+ *  Conditional Image Server (Child App)
+ *  Based off of Conditional Image Server by Justin Leonard
+ *  Copyright© 2020 Justin Leonard
+ *
+ *  Many thanks to @dman2306 help in rendering jpg output
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ *
+ *  V1.0 - The actual image serving logic. Designed to be installed as a child 
+ *         of the "Conditional Image Server Manager" app.
+ */
+
+definition(
+    name: "Conditional Image Server",
+    namespace: "scubamikejax904",
+    author: "Michael Gartner",
+    description: "Conditional Image Server Instance",
+    category: "Convenience",
+    iconUrl: "",
+    iconX2Url: "",
+    parent: "scubamikejax904:Conditional Image Server Manager", // Links this to the Parent app
+    singleInstance: false 
+)
+
+preferences {
+    page(name: "settings")
+}
+
+def settings(){
+    // 1. Try to get the token from the Parent App first
+    def token = ""
+    if (app.getParent() && app.getParent().state.accessToken) {
+        token = app.getParent().state.accessToken
+    } else {
+        // 2. Fallback: If installed standalone, generate its own token
+        if (!state.accessToken) {
+            try { createAccessToken() } 
+            catch (e) { log.warn "Could not create access token." }
+        }
+        token = state.accessToken
+    }
+
+    def localUri = ""
+    if (token) {
+        localUri = getFullLocalApiServerUrl() + "/conditionalImage?access_token=${token}"
+    }
+
+    return dynamicPage(name: "settings", title: "Settings", install: true, uninstall: true){
+        
+        section("App Name") {
+            label title: "Assign a custom name for this instance", required: false
+        }
+
+        section("Rule Machine Global Variable Connector") {
+            input name: "inputConnector", type: "capability.actuator", title: "Rule Machine Global Variable Connector for Image URL", multiple: false, required: true
+        }
+        
+        section("") {
+            paragraph("<li>Configure different image files at different URLs.</li><li>Use Rule Machine to set the selected Global Variable Connector to different URLs under different conditions.</li>")  
+            
+            if (localUri) {
+                paragraph("<ul><li><strong>Local</strong>:<a href='${localUri}'>${localUri}</a></li></ul>")     
+            } else {
+                paragraph("<strong style='color:red;'>⚠️ OAuth is not enabled!</strong><br>Please enable 'OAuth in App Settings' on the Parent Manager app.")
+            }
+        }
+    }
+}
+
+mappings { 
+    path("/conditionalImage") { action: [ GET: "getImage"] }
+}
+
+def installed() { initialize() }
+def initialize() { }
+def updated() { initialize() }
+def uninstalled() { }
+    
+def getImage() {
+    byte[] imageBytes = null
+    String imageURL = inputConnector?.currentValue("variable")
+    
+    if (!imageURL) {
+        log.error "No image URL found in the Global Variable Connector."
+        return
+    }
+    
+    def params = [
+        uri: imageURL,
+        headers: ["Accept": "image/jpeg; image/svg+xml; image/png; image/gif"]
+    ]
+    try {
+        httpGet(params) { resp ->
+            if(resp?.data != null) {
+                imageBytes = new byte[resp?.data.available()]
+                resp?.data.read(imageBytes)
+            } else {
+                log.error "Null Response"
+            }
+        }
+    } catch (exception) {
+        log.error "Conditional Image Server exception: ${exception.message}"
+    }
+
+    String extension = "";
+    int i = imageURL.lastIndexOf('.');
+    if (i > 0) {
+        extension = imageURL.substring(i+1).toLowerCase()
+    }
+    
+    def contentTypeString = null    
+    if (extension == "svg") contentTypeString = "image/svg+xml"
+    else if (extension == "jpg" || extension == "jpeg") contentTypeString = "image/jpeg"
+    else if (extension == "png") contentTypeString = "image/png"
+    else if (extension == "gif") contentTypeString = "image/gif"
+    else {
+        log.warn "Unknown file type: ${extension}. Defaulting to jpg."
+        contentTypeString = "image/jpeg"
+    }
+    
+    if (imageBytes) {
+        render contentType: contentTypeString, data: imageBytes, status: 200
+    }
+}
