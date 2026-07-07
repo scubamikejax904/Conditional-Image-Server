@@ -15,19 +15,15 @@
  *
  *
  *  V1.0 Manages multiple instances of the Conditional Image Server.
- *       Handles the single OAuth token for all child instances.
+ *       Child app does everything this is just to group multiple instances.
  */
-
 definition(
     name: "Conditional Image Server Manager",
     namespace: "scubamikejax904",
     author: "Michael Gartner",
-    description: "Manages multiple instances of the Conditional Image Server",
+    description: "Container for Conditional Image Server instances",
     category: "Convenience",
-    iconUrl: "",
-    iconX2Url: "",
-    oauth: true, // Enable OAuth here so we only have to do it once!
-    singleInstance: true, // Only one Manager app is needed
+    singleInstance: true, 
     childApps: [
         [name: "imageServerChild", appName: "Conditional Image Server", namespace: "scubamikejax904"]
     ]
@@ -38,37 +34,22 @@ preferences {
 }
 
 def mainPage() {
-    // Ensure the Parent app has an OAuth token
-    if (!state.accessToken) {
-        try { createAccessToken() } 
-        catch (e) { log.warn "Could not create access token. Please enable OAuth in this Manager app's settings." }
-    }
-
     dynamicPage(name: "mainPage", title: "Conditional Image Server Manager", install: true, uninstall: true) {
         
         section("Instructions") {
-            paragraph "Use this page to add, remove, and configure your Conditional Image Server instances. Because OAuth is enabled on this Manager app, your child instances will automatically share this token."
+            paragraph "Add your Conditional Image Server instances below. Each instance will manage its own settings and OAuth token independently."
         }
 
         section("Image Server Instances") {
-            // Added the 'title' parameter to display custom text for the child app input
             app(name: "imageServerChild", 
                 appName: "Conditional Image Server", 
                 namespace: "scubamikejax904", 
                 multiple: true, 
-                title: "Create Conditional Image") // <--- THIS IS THE NEW TEXT
+                title: "Create Conditional Image")
         }
     }
 }
 
-def installed() {
-    log.info "Installed Manager App"
-}
-
-def updated() {
-    log.info "Updated Manager App"
-}
-
-def uninstalled() {
-    log.info "Uninstalled Manager App"
-}
+def installed() { log.info "Installed Manager App" }
+def updated() { log.info "Updated Manager App" }
+def uninstalled() { log.info "Uninstalled Manager App" }
