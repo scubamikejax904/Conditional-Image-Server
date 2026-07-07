@@ -17,6 +17,9 @@
  *  V1.0 Manages multiple instances of the Conditional Image Server.
  *       Child app does everything this is just to group multiple instances.
  */
+
+
+
 definition(
     name: "Conditional Image Server Manager",
     namespace: "scubamikejax904",
