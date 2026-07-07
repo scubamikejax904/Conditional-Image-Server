@@ -1,5 +1,8 @@
 # Conditional Image Server for Hubitat
 
+## There are no Warranties expressed or Implied with this software, it is Released under Apache-2.0 license 
+
+
 This Hubitat app allows you to dynamically serve images (JPG, PNG, SVG, GIF) to your dashboard or external services. It works by reading an image URL from a Rule Machine Global Variable, fetching the image, and serving it via a local API endpoint.
 
 It uses a **Parent/Child app architecture**. The "Manager" app acts as a clean folder to keep your UI organized, while the "Child" apps handle the actual image serving and OAuth tokens independently.
