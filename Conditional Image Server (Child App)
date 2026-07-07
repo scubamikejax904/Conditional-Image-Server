@@ -14,8 +14,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *
- *  V1.0 Manages multiple instances of the Conditional Image Server.
- *       Handles the single OAuth token for all child instances.
+ *  V1.0 Handles all the actual logic, OAuth, and image serving.
  */
 
 
@@ -25,9 +24,8 @@ definition(
     author: "Michael Gartner",
     description: "Conditional Image Server Instance",
     category: "Convenience",
-    iconUrl: "",
-    iconX2Url: "",
-    parent: "scubamikejax904:Conditional Image Server Manager", // Links this to the Parent app
+    oauth: true, // <--- THE CHILD HANDLES OAUTH NOW
+    parent: "scubamikejax904:Conditional Image Server Manager", // Nests it under the Parent
     singleInstance: false 
 )
 
@@ -36,22 +34,18 @@ preferences {
 }
 
 def settings(){
-    // 1. Try to get the token from the Parent App first
-    def token = ""
-    if (app.getParent() && app.getParent().state.accessToken) {
-        token = app.getParent().state.accessToken
-    } else {
-        // 2. Fallback: If installed standalone, generate its own token
-        if (!state.accessToken) {
-            try { createAccessToken() } 
-            catch (e) { log.warn "Could not create access token." }
+    // The Child app generates its own token
+    if(!state.accessToken){	
+        try {
+            createAccessToken()
+        } catch (e) {
+            log.warn "Could not create access token. Please ensure OAuth is enabled for the CHILD app in the Apps Code menu."
         }
-        token = state.accessToken
     }
 
     def localUri = ""
-    if (token) {
-        localUri = getFullLocalApiServerUrl() + "/conditionalImage?access_token=${token}"
+    if (state.accessToken) {
+        localUri = getFullLocalApiServerUrl() + "/conditionalImage?access_token=${state.accessToken}"
     }
 
     return dynamicPage(name: "settings", title: "Settings", install: true, uninstall: true){
@@ -70,7 +64,7 @@ def settings(){
             if (localUri) {
                 paragraph("<ul><li><strong>Local</strong>:<a href='${localUri}'>${localUri}</a></li></ul>")     
             } else {
-                paragraph("<strong style='color:red;'>⚠️ OAuth is not enabled!</strong><br>Please enable 'OAuth in App Settings' on the Parent Manager app.")
+                paragraph("<strong style='color:red;'>⚠️ OAuth is not enabled!</strong><br>Please enable OAuth for the 'Conditional Image Server' in the Apps Code menu.")
             }
         }
     }
